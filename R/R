@@ -1,0 +1,89 @@
+library(ape)
+library(phytools)
+
+seqs <- read.dna("Data/example_sequences.fasta", format = "fasta")
+ml_tree <- nj(dist.dna(seqs))
+plot(ml_tree, main="Maximum Likelihood Phylogenetic Tree")
+# Load DNA sequences
+seqs <- readDNAStringSet("Data/example_sequences.fasta")
+
+# Compute distance matrix
+dist_mat <- dist.dna(as.DNAbin(seqs), model = "K80")
+
+# Neighbor-joining tree (as starting tree)
+nj_tree <- nj(dist_mat)
+
+# Maximum likelihood tree estimation
+fit <- pml(nj_tree, data = as.phyDat(seqs))
+fit_ml <- optim.pml(fit, model = "GTR", optGamma = TRUE, control = pml.control(trace = 0))
+
+# Bayesian analysis using phangorn (approximation)
+fit_bayes <- bootstrap.pml(fit_ml, bs = 100) # 100 bootstraps
+
+# Visualize tree
+plot(fit_ml$tree, main="ML Phylogenetic Tree")
+nodelabels(round(fit_bayes$BP,2), cex=0.6, frame="none")
+02_phylodynamics.R
+
+# Phylodynamic inference
+library(ape)
+library(phytools)
+library(treedater)
+library(lubridate)
+
+# Load aligned sequences and sampling dates
+seqs <- read.dna("Data/example_sequences.fasta", format="fasta")
+dates <- read.csv("Data/sampling_dates.csv")
+
+# Build ML tree
+dist_mat <- dist.dna(as.DNAbin(seqs))
+ml_tree <- nj(dist_mat)
+
+# Estimate substitution rate and time-scaled tree
+td <- dater(ml_tree, dates$collection_date, s = 1e4)
+plot(td$tree, main="Time-Scaled Phylodynamic Tree")
+
+# Population growth modeling (coalescent)
+library(ape)
+popsize <- skyline(td$tree)
+plot(popsize, main="Effective Population Size Over Time")
+03_differential_expression.R
+
+# RNA-Seq / WGS differential expression
+library(DESeq2)
+library(tidyverse)
+
+# Load counts and metadata
+counts <- read.csv("Data/rna_counts.csv", row.names=1)
+meta <- read.csv("Data/metadata.csv")
+
+# Create DESeq2 dataset
+dds <- DESeqDataSetFromMatrix(countData = counts, colData = meta, design = ~ condition)
+
+# Run differential expression
+dds <- DESeq(dds)
+res <- results(dds)
+
+# Filter significant genes
+sig_genes <- res %>% as.data.frame() %>% filter(padj < 0.05)
+
+# Plot heatmap
+library(pheatmap)
+pheatmap(assay(dds)[rownames(sig_genes),], cluster_rows=TRUE, cluster_cols=TRUE)
+04_integration_analysis.R
+
+# Integration of genomic & epidemiological data
+library(tidyverse)
+library(igraph)
+
+# Load genomic metrics and patient metadata
+genomic <- read.csv("Data/genomic_metrics.csv")
+meta <- read.csv("Data/epidemiology_data.csv")
+
+# Merge datasets
+combined <- genomic %>% inner_join(meta, by="sample_id")
+
+# Build correlation network between genomic features and epidemiological variables
+cor_mat <- cor(combined %>% select(-sample_id))
+network <- graph.adjacency(cor_mat > 0.7, mode="undirected", diag=FALSE)
+plot(network, vertex.label=NA, vertex.size=5)
